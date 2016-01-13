@@ -7,7 +7,7 @@ module I18n
 
       def call(env)
         @cache = nil
-        verify_locale_files!
+        validate_cache!
         @app.call(env)
       end
 
@@ -38,6 +38,10 @@ module I18n
         end
       end
 
+      def config_file_path
+        @config_file_path ||= Rails.root.join(::I18n::JS.config_file_path).to_s
+      end
+
       # Check if translations should be regenerated.
       # ONLY REGENERATE when these conditions are met:
       #
@@ -45,17 +49,29 @@ module I18n
       # # Translations and cache size are different (files were removed/added)
       # # Translation file has been updated
       #
-      def verify_locale_files!
+      def validate_cache!
         valid_cache = []
         new_cache = {}
 
         valid_cache.push cache_path.exist?
-        valid_cache.push ::I18n.load_path.uniq.size == cache.size
+        valid_cache.push ::I18n.load_path.uniq.size == cache.size - 1
 
         ::I18n.load_path.each do |path|
           changed_at = File.mtime(path).to_i
           valid_cache.push changed_at == cache[path]
           new_cache[path] = changed_at
+        end
+
+        if File.exist?(config_file_path)
+          config_changed_at = File.mtime(config_file_path).to_i
+        else
+          config_changed_at = nil
+        end
+        valid_cache.push config_changed_at == cache[config_file_path]
+        new_cache[config_file_path] = config_changed_at
+
+        ::I18n::JS.configured_segments.each do |segment|
+          valid_cache.push Rails.root.join(segment.file).exist?
         end
 
         return if valid_cache.all?

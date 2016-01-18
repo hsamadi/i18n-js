@@ -904,29 +904,34 @@
     return scope;
   };
   /**
-   * Merge obj1 with obj2 (shallow merge), without modifying inputs
+   * Merge obj1 with obj2 (deep merge), without modifying inputs
    * @param {Object} obj1
    * @param {Object} obj2
    * @returns {Object} Merged values of obj1 and obj2
    *
-   * In order to support ES3, `Object.prototype.hasOwnProperty.call` is used
-   * Idea is from:
-   * https://stackoverflow.com/questions/8157700/object-has-no-hasownproperty-method-i-e-its-undefined-ie8
    */
   I18n.extend = function ( obj1, obj2 ) {
-    var extended = {};
-    var prop;
-    for (prop in obj1) {
-      if (Object.prototype.hasOwnProperty.call(obj1, prop)) {
-        extended[prop] = obj1[prop];
-      }
+    var dst = {};
+
+    if (obj1 && typeof obj1 === 'object') {
+      Object.keys(obj1).forEach(function (key) {
+        dst[key] = obj1[key];
+      });
     }
-    for (prop in obj2) {
-      if (Object.prototype.hasOwnProperty.call(obj2, prop)) {
-        extended[prop] = obj2[prop];
+    Object.keys(obj2).forEach(function (key) {
+      if (typeof obj2[key] !== 'object' || !obj2[key]) {
+        dst[key] = obj2[key];
       }
-    }
-    return extended;
+      else {
+        if (!obj1[key]) {
+          dst[key] = obj2[key];
+        } else {
+          dst[key] = I18n.extend(obj1[key], obj2[key]);
+        }
+      }
+    });
+
+    return dst;
   };
 
   // Set aliases, so we can save some typing.
